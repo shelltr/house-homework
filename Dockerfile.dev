@@ -1,0 +1,32 @@
+# Use the official Ruby image as a base
+ARG RUBY_VERSION=3.4.2
+FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
+
+ENV RAILS_ENV="development"
+
+# Install base packages
+RUN apt-get update -qq && \
+  apt-get install --no-install-recommends -y curl \
+  libjemalloc2 libvips \
+  sqlite3 libpq-dev \
+  postgresql-client libgdal-dev gdal-bin \
+  procps && \
+  rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+# Install packages needed to build gems
+RUN apt-get update -qq && \
+  apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config vim && \
+  rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+# Set the working directory
+WORKDIR /app
+
+COPY Gemfile Gemfile.lock ./
+
+RUN bundle install
+
+# Expose the application port
+EXPOSE 3000
+# Command to keep the container running
+CMD ["rails", "server", "-b", "0.0.0.0"]
+
