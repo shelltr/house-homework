@@ -1,49 +1,75 @@
 # Rakefile
 
-require 'rake'
-require 'faker'
+require "rake"
+require "faker"
 
 namespace :ics do
   desc "Generate ICS test data with random events for the next week"
-  task :generate do
-    random_ics_file_name = Rails.root.join("data", "user_test_data_#{rand(1000000)}.ics")
-    File.open(random_ics_file_name, "w") do |file|
-      file.write <<~ICS
-        BEGIN:VCALENDAR
-        VERSION:2.0
-        CALSCALE:GREGORIAN
-        METHOD:PUBLISH
-        PRODID:-//Your Organization//Your Product//EN
-        X-WR-CALNAME:Test Calendar
-        X-WR-TIMEZONE:UTC
-      ICS
+  task generate: :environment do
+    name = Faker::Name.first_name
+    file_name = "#{name.downcase}_calendar.ics"
+    random_ics_file_name = Rails.root.join("data", file_name)
 
-      # Generate random events for the next week
-      (0..6).each do |day_offset|
-        event_date = Time.now.utc + (day_offset * 24 * 60 * 60) # Next week
-        uid = Faker::Internet.uuid
-        dtstamp = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
-        start_time = event_date.strftime('%Y%m%dT%H%M%SZ')
-        end_time = (event_date + 1 * 60 * 60).strftime('%Y%m%dT%H%M%SZ') # 1 hour duration
+    DAY_START = 8.hours.in_minutes # 8 AM in minutes
+    DAY_END = 20.hours.in_minutes # 8 PM in minutes
 
-        file.write <<~ICS
-        BEGIN:VEVENT
-        UID:#{uid}
-        DTSTAMP:#{dtstamp}
-        DTSTART:#{start_time}
-        DTEND:#{end_time}
-        SUMMARY:#{Faker::Lorem.sentence(word_count: 3)}
-        DESCRIPTION:#{Faker::Lorem.paragraph}
-        LOCATION:#{Faker::Address.full_address}
-        STATUS:CONFIRMED
-        END:VEVENT
-        ICS
-      end
+    TIMEZONE = "America/Los_Angeles"
+    Time.zone = TIMEZONE
 
-      file.write <<~ICS
-        END:VCALENDAR
-      ICS
-    end
-    puts "ICS file 'user_test_data.ics' with random events has been created."
+    DATE_FORMAT = "%Y%m%dT%H%M%S"
+
+    WORKING_DAYS = [ 1, 2, 3, 4, 5 ] # Monday to Friday
+
+    MAX_EVENTS_PER_DAY = 15
+
+    DAYS_TO_GENERATE = 7
+
+    # Generate all events first
+    events = generate_events(name)
+
+    # Write events to file
+    Calendar.write_ics_file(random_ics_file_name, name, events)
+
+    puts "Generated events for #{name} at #{file_name}"
   end
+end
+
+def generate_events(name)
+  events = []
+
+  (0..DAYS_TO_GENERATE - 1).each do |day_offset|
+    base_date = Time.zone.now + (day_offset * 24 * 60 * 60)
+
+    # Skip weekends
+    next unless WORKING_DAYS.include?(base_date.wday)
+
+    current_time = DAY_START
+    num_events = rand(1..MAX_EVENTS_PER_DAY)
+
+    num_events.times do
+      duration = rand(30..120)
+      gap = rand(15..120)
+      current_time += gap
+
+      break if current_time + duration >= DAY_END
+
+      hour = current_time / 60
+      minute = current_time % 60
+      event_date = base_date.in_time_zone(TIMEZONE).change(hour: hour, min: minute)
+
+      events << {
+        uid: Faker::Internet.uuid,
+        dtstamp: Time.zone.now.strftime(DATE_FORMAT),
+        start_time: event_date.strftime(DATE_FORMAT),
+        end_time: (event_date + duration * 60).strftime(DATE_FORMAT),
+        summary: Faker::Lorem.sentence(word_count: 3),
+        description: Faker::Lorem.paragraph,
+        location: Faker::Address.full_address
+      }
+
+      current_time += duration
+    end
+  end
+
+  events
 end

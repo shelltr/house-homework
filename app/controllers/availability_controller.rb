@@ -1,8 +1,7 @@
 class AvailabilityController < ApplicationController
   def index
-  end
     # Get list of all ics files under data/user_test_data
-    ics_files = Dir.glob(Rails.root.join('data', 'user_test_data', '*.ics'))
+    ics_files = Dir.glob(Rails.root.join("data", "user_test_data", "*.ics"))
 
     # Pick a random ics file
     ics_file = ics_files.sample
@@ -18,6 +17,4 @@ class AvailabilityController < ApplicationController
   end
 
   private
-
-  def check_availability(events)
 end
