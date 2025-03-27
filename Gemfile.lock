@@ -116,6 +116,10 @@ GEM
       activesupport (>= 6.1)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
+    icalendar (2.10.3)
+      ice_cube (~> 0.16)
+      ostruct
+    ice_cube (0.17.0)
     importmap-rails (2.1.0)
       actionpack (>= 6.0.0)
       activesupport (>= 6.0.0)
@@ -369,6 +373,7 @@ DEPENDENCIES
   capybara
   debug
   faker (~> 3.5)
+  icalendar (~> 2.10)
   importmap-rails
   jbuilder
   kamal

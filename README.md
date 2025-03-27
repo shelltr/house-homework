@@ -5,7 +5,9 @@
 - [ ] Generate random test data for different cases
   - [ ] Random events
   - [ ] User has no availability
-  - [ ] 
+  - [ ] User has unevenly stacked days
+  - [ ] User has no events on one of the days
+  - [ ] User has a day where two of their existing meetings overlap
 
 ## Assumptions
 - Users will not be available from 8PM - 8AM, which is when they sleep
