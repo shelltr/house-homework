@@ -35,7 +35,7 @@ class Calendar
   end
 
   def self.get_ics_file_by_name(name)
-    Rails.root.join("data", "#{name.downcase}_calendar.ics")
+    Rails.root.join("data", "#{name.downcase}.ics")
   end
 
   def get_available_slots(
