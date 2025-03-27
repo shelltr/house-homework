@@ -39,11 +39,13 @@ class Calendar
   end
 
   def available_slots(
-    start_time = Time.now.in_time_zone(DEFAULT_TIMEZONE),
-    end_time = Time.now.in_time_zone(DEFAULT_TIMEZONE) + 7.days,
+    start_time = Time.now,
+    end_time = Time.now + 7.days,
     duration = DEFAULT_TIME_SLOT_DURATION_IN_MINUTES,
     increment = DEFAULT_TIME_SLOT_GAP_IN_MINUTES
   )
+    start_time = start_time.in_time_zone(DEFAULT_TIMEZONE)
+    end_time = end_time.in_time_zone(DEFAULT_TIMEZONE)
     puts "Getting available slots for #{start_time} to #{end_time} with duration #{duration}"
     time_ranges = determine_available_time_ranges(start_time, end_time, duration, increment)
     available_slots = time_ranges.map do |time_range|
