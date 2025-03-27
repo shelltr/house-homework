@@ -38,7 +38,7 @@ class Calendar
     Rails.root.join("data", "#{name.downcase}.ics")
   end
 
-  def get_available_slots(
+  def available_slots(
     start_time = Time.now.in_time_zone(DEFAULT_TIMEZONE),
     end_time = Time.now.in_time_zone(DEFAULT_TIMEZONE) + 7.days,
     duration = DEFAULT_TIME_SLOT_DURATION_IN_MINUTES,

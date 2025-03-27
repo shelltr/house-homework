@@ -28,7 +28,7 @@ class CalendarTest < ActiveSupport::TestCase
     # Setup a calendar with some random events but gaps between them
     calendar = Calendar.new("krissy")
     
-    available_slots = calendar.get_available_slots(@start_time, @end_time, @duration)
+    available_slots = calendar.available_slots(@start_time, @end_time, @duration)
     
     # Should find at least some available slots
     assert available_slots.any?, "Should find available slots with normal random events"
@@ -88,7 +88,7 @@ class CalendarTest < ActiveSupport::TestCase
     # Create instance of the mock class
     calendar = mock_calendar.new("full_calendar")
     
-    available_slots = calendar.get_available_slots(@start_time, @end_time, @duration)
+    available_slots = calendar.available_slots(@start_time, @end_time, @duration)
     
     # Should find no available slots
     assert_empty available_slots, "Should find no available slots when calendar is full"
@@ -129,7 +129,7 @@ class CalendarTest < ActiveSupport::TestCase
     # Create instance of the mock class
     calendar = mock_calendar.new("uneven_calendar")
     
-    available_slots = calendar.get_available_slots(@start_time, @end_time, @duration)
+    available_slots = calendar.available_slots(@start_time, @end_time, @duration)
     
     # Should find more slots on the less busy days
     busy_day = Date.parse("2025-03-28")
@@ -172,7 +172,7 @@ class CalendarTest < ActiveSupport::TestCase
     # Create instance of the mock class
     calendar = mock_calendar.new("partially_free_calendar")
     
-    available_slots = calendar.get_available_slots(@start_time, @end_time, @duration)
+    available_slots = calendar.available_slots(@start_time, @end_time, @duration)
     
     # The free day should have slots covering the entire working day
     free_day = Date.parse("2025-03-31")
@@ -223,7 +223,7 @@ class CalendarTest < ActiveSupport::TestCase
     # Create instance of the mock class
     calendar = mock_calendar.new("overlapping_calendar")
     
-    available_slots = calendar.get_available_slots(@start_time, @end_time, @duration)
+    available_slots = calendar.available_slots(@start_time, @end_time, @duration)
     
     # Verify that the overlapping period is properly handled
     overlap_day = Date.parse("2025-03-28")

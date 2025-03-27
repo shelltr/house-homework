@@ -1,7 +1,15 @@
 # README
 
 ## How to Install
-1. Run docker-compose up in the root directory of this project
+1. Run the following
+```bashrc
+docker-compose build
+docker-compose up
+```
+Note: Dockerfile.dev & docker-compose.yml are for development purposes
+
+2. Go to http://0.0.0.0:3000
+* Or whatever link you get after running the above commands
 
 ## How to query
 

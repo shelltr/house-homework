@@ -1,20 +1,21 @@
 class AvailabilityController < ApplicationController
+  before_action :set_calendar
+
   def index
-    # Get list of all ics files under data/user_test_data
-    ics_files = Dir.glob(Rails.root.join("data", "user_test_data", "*.ics"))
-
-    # Pick a random ics file
-    ics_file = ics_files.sample
-
-    # Parse the ics file
-    calendar = Icalendar::Calendar.new(ics_file)
-
-    # Get all events from the calendar
-    events = calendar.events
+    events = calendar.available_slots
 
     # Return the events
     render json: events
   end
 
   private
+
+  def set_calendar
+    if params[:name].blank?
+      render json: { error: "Name is required!" }, status: :bad_request
+      return
+    end
+
+    @calendar ||= Calendar.new(params[:name])
+  end
 end
