@@ -42,13 +42,14 @@ class Calendar
     start_time: nil,
     end_time: nil,
     duration: nil,
-    increment: nil
+    increment: nil 
   )
-    start_time = (start_time || Time.now).in_time_zone(DEFAULT_TIMEZONE)
-    end_time = (end_time || start_time + 7.days).in_time_zone(DEFAULT_TIMEZONE)
+    # Handle yyyy-mm-dd format or use defaults
+    start_time = parse_date_input(start_time) || Time.now
+    end_time = parse_date_input(end_time) || (start_time + 7.days)
     duration = (duration || DEFAULT_TIME_SLOT_DURATION_IN_MINUTES).to_i
     increment = (increment || DEFAULT_TIME_SLOT_GAP_IN_MINUTES).to_i
-
+    
     puts "Getting available slots for #{start_time} to #{end_time} with duration #{duration}"
     time_ranges = determine_available_time_ranges(start_time, end_time, duration, increment)
     available_slots = time_ranges.map do |time_range|
@@ -162,11 +163,19 @@ class Calendar
     end
 
     # Sort the grouped days by the total available time for each day
-    suggested_slots_by_day = suggested_slots_by_day.sort_by do |day, slots|
+    sorted_days = suggested_slots_by_day.sort_by do |day, slots|
       slots.sum { |slot| slot[:end_time] - slot[:start_time] }
     end
 
-    suggested_slots_by_day
+    # Transform into an array of hashes with formatted date keys
+    sorted_days.map do |day, slots|
+      {
+        date: day.strftime('%Y-%m-%d'),
+        day_of_week: day.strftime('%A'),
+        total_available_minutes: slots.sum { |slot| (slot[:end_time] - slot[:start_time]) / 60 },
+        slots: slots
+      }
+    end
   end
 
   private
@@ -265,5 +274,29 @@ class Calendar
         }
       end
     end
+  end
+
+  # Helper method to parse different date formats
+  def parse_date_input(date_input)
+    return nil if date_input.nil?
+    
+    if date_input.is_a?(String) && date_input.match?(/^\d{4}-\d{2}-\d{2}$/)
+      # If it's a yyyy-mm-dd string, parse it and set time to beginning of day
+      date = Date.parse(date_input)
+      return date.to_time.in_time_zone(DEFAULT_TIMEZONE).change(
+        hour: DEFAULT_START_TIME_OF_DAY_IN_MINUTES / 60,
+        min: DEFAULT_START_TIME_OF_DAY_IN_MINUTES % 60
+      )
+    elsif date_input.is_a?(String)
+      # Try to parse as a full datetime string
+      return Time.zone.parse(date_input)
+    else
+      # Already a Time/DateTime object
+      return date_input
+    end
+  rescue ArgumentError => e
+    # Log the error and return nil (which will use the default)
+    puts "Error parsing date '#{date_input}': #{e.message}"
+    return nil
   end
 end

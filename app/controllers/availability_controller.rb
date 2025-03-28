@@ -5,15 +5,23 @@ class AvailabilityController < ApplicationController
     validate_params
 
     # Pass the optional parameters to the available_slots method
-    events = @calendar.available_slots(
+    available_slots = @calendar.available_slots(
       start_time: params[:start_time],
       end_time: params[:end_time],
       duration: params[:duration],
       increment: params[:increment]
     )
 
+    response = {
+      available_slots: available_slots
+    }
+
+    if params[:with_suggestions].to_s.downcase == "true"
+      response[:suggested_slots] = @calendar.suggest_slots(available_slots)
+    end
+
     # Return the events
-    render json: events
+    render json: response
   end
 
   private
