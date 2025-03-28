@@ -48,7 +48,7 @@ http://127.0.0.1:3000/?client_id=company_1&agent_id=deandre&start_time=2025-03-2
   - [ ] Need coverage for everything
 
 ## Assumptions
-- Users will not be available from 8PM - 8AM, which is when they sleep
+- Users will not be available from 8AM - 6PM, which is when they sleep
 - Users will not be available on Saturday and Sunday. Work/life balance!
 - Users do not want to schedule meetings at random times (ex: 8:07, instead it should be anchored to the closest next time interval)
 
