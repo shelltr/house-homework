@@ -13,12 +13,13 @@ Note: Dockerfile.dev & docker-compose.yml are for development purposes
 
 ## How to query
 * Query Brady
-http://127.0.0.1:3000/?client_id=company_1&agent_id=deandre&start_time=2025-03-29&end_time=2025-04-03&with_suggestions=true
+http://127.0.0.1:3000/?client_id=company_1&agent_id=deandre&start_time=2025-03-29&end_time=2025-04-03&with_suggestions=true&duration=20
 * Available params
   * agent_id
   * client_id (does nothing)
   * start_time (MUST be in year-month-date) format
   * end_time (MUST be in year-month-date) format
+  * duration (MUST be numbers, in minutes)
   * with_suggestions (must be true)
 
 
