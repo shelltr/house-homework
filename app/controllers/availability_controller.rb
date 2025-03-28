@@ -1,8 +1,7 @@
 class AvailabilityController < ApplicationController
-  before_action :set_calendar
-
   def index
     validate_params
+    set_calendar
 
     # Pass the optional parameters to the available_slots method
     available_slots = @calendar.available_slots(
@@ -27,20 +26,18 @@ class AvailabilityController < ApplicationController
   private
 
   def set_calendar
-    if params[:name].blank?
-      render json: { error: "Name is required!" }, status: :bad_request
-      return
-    end
-
-    @calendar ||= Calendar.new(params[:name])
+    @calendar ||= Calendar.new(params[:client_id], params[:agent_id])
   end
 
   def validate_params
-    unless params[:name].present?
-      flash[:error] = "Name is required"
-      render :error and return
+    unless params[:agent_id].present?
+      render json: { error: "Agent ID is required" }, status: :bad_request and return
     end
-    
+
+    unless params[:client_id].present?
+      render json: { error: "Client ID is required" }, status: :bad_request and return
+    end
+
     # Optional validation for date/time parameters
     if params[:start_time].present? && !valid_datetime?(params[:start_time])
       render json: { error: "Invalid start_time format" }, status: :bad_request and return

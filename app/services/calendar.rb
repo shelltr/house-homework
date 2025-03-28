@@ -8,10 +8,13 @@ class Calendar
   DEFAULT_ANCHOR_IN_MINUTES = 15 # No one wants a meeting at 8:07 AM, anchor to next 15 minute increment
   ICS_DATETIME_FORMAT = "%Y%m%dT%H%M%S"
 
-  def initialize(name)
+  def initialize(client_id, agent_id)
+    # TODO: Currently client_id does notthing,
+    # but it would be good to support client_ids as company-wide calendars
     Time.zone = DEFAULT_TIMEZONE
-    @name = name
-    @calendar_events = Calendar.get_calendar_events(Calendar.get_ics_file_by_name(name))
+    @client_id = client_id
+    @agent_id = agent_id
+    @calendar_events = Calendar.get_calendar_events(Calendar.get_ics_file_by_name(agent_id))
     @busy_times = busy_times # time ranges where the user is busy
   end
 
@@ -44,22 +47,40 @@ class Calendar
     duration: nil,
     increment: nil 
   )
+    puts "raw input? #{start_time.inspect} #{end_time.inspect}"
+
     # Handle yyyy-mm-dd format or use defaults
-    start_time = parse_date_input(start_time) || Time.now
-    end_time = parse_date_input(end_time) || (start_time + 7.days)
+    parsed_start = parse_date_input(start_time)
+    parsed_end = parse_date_input(end_time)
+
+    # Use defaults if parsing returns nil
+    start_time = parsed_start || Time.now
+    end_time = parsed_end || (Time.now + 7.days)
+
+    # Ensure we're working with times in the correct timezone
+    start_time = start_time.in_time_zone(DEFAULT_TIMEZONE)
+    end_time = end_time.in_time_zone(DEFAULT_TIMEZONE)
+
+    # Log the actual date range being used
+    puts "Using date range: #{start_time.to_date} (#{Date::DAYNAMES[start_time.to_date.wday]}) to #{end_time.to_date} (#{Date::DAYNAMES[end_time.to_date.wday]})"
+
     duration = (duration || DEFAULT_TIME_SLOT_DURATION_IN_MINUTES).to_i
     increment = (increment || DEFAULT_TIME_SLOT_GAP_IN_MINUTES).to_i
-    
+
     puts "Getting available slots for #{start_time} to #{end_time} with duration #{duration}"
     time_ranges = determine_available_time_ranges(start_time, end_time, duration, increment)
-    available_slots = time_ranges.map do |time_range|
+
+    time_ranges.map do |time_range|
       {
         start_time: time_range.first,
-        end_time: time_range.last
+        end_time: time_range.last,
+        friendly_date: time_range.first.strftime("%A, %B %d, %Y")
       }
     end
+  end
 
-    available_slots.map do |slot|
+  def available_slots_to_ics(start_time: nil, end_time: nil)
+    available_slots(start_time: start_time, end_time: end_time).map do |slot|
       Calendar.generate_event(
         slot[:start_time],
         slot[:end_time],
@@ -74,68 +95,67 @@ class Calendar
   # 2. It is on a working day
   # 3. It is between the start and end times of the day
   def determine_available_time_ranges(start_time, end_time, duration_minutes, increment)
-    # Step 1: Set up the time boundaries
+    # Set up time boundaries and convert to consistent timezone
     start_time = start_time.in_time_zone(DEFAULT_TIMEZONE)
     end_time = end_time.in_time_zone(DEFAULT_TIMEZONE)
     
-    # Step 2: Create an array of busy time ranges
-    busy_times = @calendar_events.map do |event|
-      (event[:start_time].in_time_zone(DEFAULT_TIMEZONE)..
-       event[:end_time].in_time_zone(DEFAULT_TIMEZONE))
-    end
+    # Get busy time ranges
+    busy_times = @calendar_events.map { |event| 
+      (event[:start_time].in_time_zone(DEFAULT_TIMEZONE)..event[:end_time].in_time_zone(DEFAULT_TIMEZONE))
+    }
     
-    # Step 3: Find available slots
     available_slots = []
     
-    # Process each day in the range
+    # Process each working day in the range
     (start_time.to_date..end_time.to_date).each do |date|
       # Skip non-working days
       next unless DEFAULT_WORKING_DAYS.include?(date.wday)
-      
-      # Set day boundaries based on working hours
-      day_start = date.to_time.in_time_zone(DEFAULT_TIMEZONE).change(
-        hour: DEFAULT_START_TIME_OF_DAY_IN_MINUTES / 60,
-        min: DEFAULT_START_TIME_OF_DAY_IN_MINUTES % 60
-      )
-      
-      day_end = date.to_time.in_time_zone(DEFAULT_TIMEZONE).change(
-        hour: DEFAULT_END_TIME_OF_DAY_IN_MINUTES / 60,
-        min: DEFAULT_END_TIME_OF_DAY_IN_MINUTES % 60
-      )
-      
-      # Respect the overall search boundaries
-      day_start = [day_start, start_time].max
-      day_end = [day_end, end_time].min
-      
-      # Get busy times for this specific day
-      day_busy_times = busy_times.select do |busy|
-        busy.begin.to_date == date || busy.end.to_date == date
+      puts "Processing working day: #{date} (#{Date::DAYNAMES[date.wday]})"
+
+      # Create a time object at midnight of the current date in the correct timezone
+      midnight = date.in_time_zone(DEFAULT_TIMEZONE).beginning_of_day
+
+      # Set working hours relative to midnight
+      day_start = midnight + DEFAULT_START_TIME_OF_DAY_IN_MINUTES.minutes
+      day_end = midnight + DEFAULT_END_TIME_OF_DAY_IN_MINUTES.minutes
+
+      # Apply overall search boundaries while preserving the correct date
+      if start_time.to_date == date && start_time > day_start
+        day_start = start_time
       end
-      
-      # Start at the first increment boundary
-      current_time = day_start
-      current_time = round_up_to_increment(current_time, increment)
-      
-      # Keep checking until we reach the end of the day
+
+      if end_time.to_date == date && end_time < day_end
+        day_end = end_time
+      end
+
+      # Verify dates haven't changed
+      if day_start.to_date != date || day_end.to_date != date
+        next # Skip this day if dates have changed
+      end
+
+      # Get busy times for this day
+      day_busy_times = busy_times.select { |busy| busy.begin.to_date <= date && busy.end.to_date >= date }
+
+      # Find available slots
+      current_time = round_up_to_increment(day_start, increment)
+
       while current_time + duration_minutes.minutes <= day_end
         slot_end = current_time + duration_minutes.minutes
-        
+
         # Check if this slot conflicts with any busy time
         conflict = day_busy_times.any? do |busy|
           (current_time < busy.end) && (slot_end > busy.begin)
         end
-        
+
         unless conflict
           available_slots << (current_time..slot_end)
-          # Move to the next non-overlapping slot at an increment boundary
           current_time = round_up_to_increment(slot_end, increment)
         else
-          # Move to the next increment boundary
           current_time += increment.minutes
         end
       end
     end
-    
+
     available_slots
   end
 
@@ -154,8 +174,15 @@ class Calendar
   # Suggest slots where users have the most availability
   # in terms of raw time.
   def suggest_slots(available_slots)
-    # Group available slots by day
-    suggested_slots_by_day = available_slots.group_by { |slot| slot[:start_time].to_date }
+    # Debug slots -- what do they look like?
+    available_slots.each do |slot|
+      puts "Slot: #{slot[:start_time]} to #{slot[:end_time]}; friendly_date: #{slot[:friendly_date]}"
+    end
+    
+    # Proceed with timezone-fixed slots
+    suggested_slots_by_day = available_slots.group_by { 
+      |slot| slot[:start_time].to_date 
+    }
 
     # Sort available slots by start time within each day
     suggested_slots_by_day.each do |day, slots|
@@ -170,11 +197,49 @@ class Calendar
     # Transform into an array of hashes with formatted date keys
     sorted_days.map do |day, slots|
       {
-        date: day.strftime('%Y-%m-%d'),
-        day_of_week: day.strftime('%A'),
+        date: day.strftime("%Y-%m-%d"),
+        day_of_week: day.strftime("%A"),
         total_available_minutes: slots.sum { |slot| (slot[:end_time] - slot[:start_time]) / 60 },
         slots: slots
       }
+    end.sort_by { |day| day[:total_available_minutes] }.reverse
+  end
+
+  def find_best_available_day(available_slots)
+    # Group available slots by day
+    slots_by_day = available_slots.group_by { |slot| slot[:start_time].to_date }
+    
+    # Process each day's availability
+    day_availability = {}
+    
+    slots_by_day.each do |date, day_slots|
+      # Calculate total available minutes
+      total_minutes = day_slots.sum { |slot| ((slot[:end_time] - slot[:start_time]) / 60).to_i }
+      
+      day_availability[date] = {
+        day_name: Date::DAYNAMES[date.wday],
+        total_minutes: total_minutes,
+        slot_count: day_slots.size
+      }
+    end
+    
+    # Find the day with the most available slots
+    best_day = day_availability.max_by do |date, data|
+      # Prioritize number of slots (80%) then total available time (20%)
+      (data[:slot_count] * 10 * 0.8) + (data[:total_minutes] * 0.2)
+    end&.first
+    
+    if best_day
+      data = day_availability[best_day]
+      
+      return {
+        date: best_day,
+        day_name: data[:day_name],
+        slot_count: data[:slot_count],
+        total_hours: (data[:total_minutes] / 60.0).round(1)
+      }
+    else
+      return nil
     end
   end
 
@@ -281,18 +346,23 @@ class Calendar
     return nil if date_input.nil?
     
     if date_input.is_a?(String) && date_input.match?(/^\d{4}-\d{2}-\d{2}$/)
-      # If it's a yyyy-mm-dd string, parse it and set time to beginning of day
-      date = Date.parse(date_input)
-      return date.to_time.in_time_zone(DEFAULT_TIMEZONE).change(
-        hour: DEFAULT_START_TIME_OF_DAY_IN_MINUTES / 60,
-        min: DEFAULT_START_TIME_OF_DAY_IN_MINUTES % 60
-      )
+      # Parse the date and explicitly set it in the target timezone
+      year, month, day = date_input.split('-').map(&:to_i)
+      
+      # Create the time directly in the target timezone to avoid shifts
+      return Time.use_zone(DEFAULT_TIMEZONE) do
+        Time.zone.local(year, month, day, 
+                        DEFAULT_START_TIME_OF_DAY_IN_MINUTES / 60, 
+                        DEFAULT_START_TIME_OF_DAY_IN_MINUTES % 60)
+      end
     elsif date_input.is_a?(String)
-      # Try to parse as a full datetime string
-      return Time.zone.parse(date_input)
+      # For full datetime strings, parse with timezone awareness
+      return Time.use_zone(DEFAULT_TIMEZONE) do
+        Time.zone.parse(date_input)
+      end
     else
-      # Already a Time/DateTime object
-      return date_input
+      # Already a Time/DateTime object, ensure it's in the right timezone
+      return date_input.in_time_zone(DEFAULT_TIMEZONE)
     end
   rescue ArgumentError => e
     # Log the error and return nil (which will use the default)

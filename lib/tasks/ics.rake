@@ -90,7 +90,7 @@ namespace :ics do
       exit 1
     end
 
-    events = users_calendar.available_slots(start_time: Time.zone.now)
+    events = users_calendar.available_slots_to_ics(start_time: Time.zone.now)
     meeting_calendar_path = Rails.root.join("data", "#{name}_available_calendar.ics")
     Calendar.write_ics_file(meeting_calendar_path, name, events)
   end
