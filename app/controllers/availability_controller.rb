@@ -26,16 +26,12 @@ class AvailabilityController < ApplicationController
   private
 
   def set_calendar
-    @calendar ||= Calendar.new(params[:client_id], params[:agent_id])
+    @calendar ||= Calendar.new(params[:agent_id], params[:client_id])
   end
 
   def validate_params
     unless params[:agent_id].present?
       render json: { error: "Agent ID is required" }, status: :bad_request and return
-    end
-
-    unless params[:client_id].present?
-      render json: { error: "Client ID is required" }, status: :bad_request and return
     end
 
     # Optional validation for date/time parameters

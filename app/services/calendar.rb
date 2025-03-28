@@ -8,13 +8,17 @@ class Calendar
   DEFAULT_ANCHOR_IN_MINUTES = 15 # No one wants a meeting at 8:07 AM, anchor to next 15 minute increment
   ICS_DATETIME_FORMAT = "%Y%m%dT%H%M%S"
 
-  def initialize(client_id, agent_id)
+  def initialize(agent_id, client_id = nil)
     # TODO: Currently client_id does notthing,
     # but it would be good to support client_ids as company-wide calendars
     Time.zone = DEFAULT_TIMEZONE
     @client_id = client_id
     @agent_id = agent_id
-    @calendar_events = Calendar.get_calendar_events(Calendar.get_ics_file_by_name(agent_id))
+
+    @calendar_events = [ agent_id, client_id ].compact.map do |id|
+      Calendar.get_calendar_events(Calendar.get_ics_file_by_name(id))
+    end.flatten
+
     @busy_times = busy_times # time ranges where the user is busy
   end
 
@@ -47,8 +51,6 @@ class Calendar
     duration: nil,
     increment: nil 
   )
-    puts "raw input? #{start_time.inspect} #{end_time.inspect}"
-
     # Handle yyyy-mm-dd format or use defaults
     parsed_start = parse_date_input(start_time)
     parsed_end = parse_date_input(end_time)
@@ -174,11 +176,6 @@ class Calendar
   # Suggest slots where users have the most availability
   # in terms of raw time.
   def suggest_slots(available_slots)
-    # Debug slots -- what do they look like?
-    available_slots.each do |slot|
-      puts "Slot: #{slot[:start_time]} to #{slot[:end_time]}; friendly_date: #{slot[:friendly_date]}"
-    end
-    
     # Proceed with timezone-fixed slots
     suggested_slots_by_day = available_slots.group_by { 
       |slot| slot[:start_time].to_date 

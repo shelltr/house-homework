@@ -16,8 +16,8 @@ namespace :ics do
   WORKING_DAYS = [ 1, 2, 3, 4, 5 ] # Monday to Friday
 
   desc "Generate ICS test data with random events for the next week"
-  task generate: :environment do
-    name = Faker::Name.first_name
+  task :generate, [ :name ] => :environment do |t, args|
+    name = args[:name] || Faker::Name.first_name
     file_name = "#{name.downcase}.ics"
     random_ics_file_name = Rails.root.join("data", file_name)
 
@@ -79,19 +79,22 @@ namespace :ics do
   end
 
   desc "Generate available slots for a user."
-  task :generate_open, [ :name ] => :environment do |t, args|
+  task :generate_open, [ :name, :client_id ] => :environment do |t, args|
     name = args[:name]
+    client_id = args[:client_id]
     file_name = "#{name.downcase}.ics"
     ics_file_path = Rails.root.join("data", file_name)
-    users_calendar = Calendar.new(name)
+    users_calendar = Calendar.new(name, client_id)
 
     if !File.exist?(ics_file_path)
       puts "File #{ics_file_path} does not exist"
       exit 1
     end
 
+    calendar_name = [name, client_id].compact.join("_")
+
     events = users_calendar.available_slots_to_ics(start_time: Time.zone.now)
-    meeting_calendar_path = Rails.root.join("data", "#{name}_available_calendar.ics")
+    meeting_calendar_path = Rails.root.join("data", "#{calendar_name}_available_calendar.ics")
     Calendar.write_ics_file(meeting_calendar_path, name, events)
   end
 

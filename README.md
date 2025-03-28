@@ -13,7 +13,7 @@ Note: Dockerfile.dev & docker-compose.yml are for development purposes
 
 ## How to query
 * Query Brady
-http://127.0.0.1:3000/?client_id=dummy_value&agent_id=brady&start_time=2025-03-29&end_time=2025-04-03&with_suggestions=true
+http://127.0.0.1:3000/?client_id=company_1&agent_id=deandre&start_time=2025-03-29&end_time=2025-04-03&with_suggestions=true
 * Available params
   * agent_id
   * client_id (does nothing)
@@ -34,14 +34,15 @@ http://127.0.0.1:3000/?client_id=dummy_value&agent_id=brady&start_time=2025-03-2
   - [x] User has no events on one of the days
   - [x] User has a day where two of their existing meetings overlap
   - [ ] User's calendar has a different timezone (default is Pacific)
+  - [ ] User's calendar + Company calendar have a different timezone
   - [ ] User needs meetings that are 2 hours (default is an hour)
   - [ ] User has calendar events that are multiple days long
   - [ ] User wants more padding between events
 - [x] Support suggestions
   - [ ] Support further sorting -- if both days are equal, sort them by
         which one has more free time
-- [ ] Support client_ids
-  - [ ] This would be a second calendar that multiple employees from
+- [x] Support client_ids
+  - [x] This would be a second calendar that multiple employees from
         the same company would share
 - [ ] Unit tests
   - [ ] Need coverage for everything
