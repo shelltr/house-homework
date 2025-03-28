@@ -5,7 +5,7 @@ class AvailabilityController < ApplicationController
     validate_params
 
     # Pass the optional parameters to the available_slots method
-    events = calendar.available_slots(
+    events = @calendar.available_slots(
       start_time: params[:start_time],
       end_time: params[:end_time],
       duration: params[:duration],

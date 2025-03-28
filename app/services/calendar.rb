@@ -39,13 +39,16 @@ class Calendar
   end
 
   def available_slots(
-    start_time = Time.now,
-    end_time = Time.now + 7.days,
-    duration = DEFAULT_TIME_SLOT_DURATION_IN_MINUTES,
-    increment = DEFAULT_TIME_SLOT_GAP_IN_MINUTES
+    start_time: nil,
+    end_time: nil,
+    duration: nil,
+    increment: nil
   )
-    start_time = start_time.in_time_zone(DEFAULT_TIMEZONE)
-    end_time = end_time.in_time_zone(DEFAULT_TIMEZONE)
+    start_time = (start_time || Time.now).in_time_zone(DEFAULT_TIMEZONE)
+    end_time = (end_time || start_time + 7.days).in_time_zone(DEFAULT_TIMEZONE)
+    duration = (duration || DEFAULT_TIME_SLOT_DURATION_IN_MINUTES).to_i
+    increment = (increment || DEFAULT_TIME_SLOT_GAP_IN_MINUTES).to_i
+
     puts "Getting available slots for #{start_time} to #{end_time} with duration #{duration}"
     time_ranges = determine_available_time_ranges(start_time, end_time, duration, increment)
     available_slots = time_ranges.map do |time_range|
@@ -139,12 +142,31 @@ class Calendar
   def round_up_to_increment(time, increment)
     minutes = time.min
     remainder = minutes % increment
-    
+
     if remainder == 0
       time # Already at an increment boundary
     else
       time + (increment - remainder).minutes
     end
+  end
+
+  # Suggest slots where users have the most availability
+  # in terms of raw time.
+  def suggest_slots(available_slots)
+    # Group available slots by day
+    suggested_slots_by_day = available_slots.group_by { |slot| slot[:start_time].to_date }
+
+    # Sort available slots by start time within each day
+    suggested_slots_by_day.each do |day, slots|
+      suggested_slots_by_day[day] = slots.sort_by { |slot| slot[:start_time] }
+    end
+
+    # Sort the grouped days by the total available time for each day
+    suggested_slots_by_day = suggested_slots_by_day.sort_by do |day, slots|
+      slots.sum { |slot| slot[:end_time] - slot[:start_time] }
+    end
+
+    suggested_slots_by_day
   end
 
   private
