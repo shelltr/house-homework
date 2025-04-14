@@ -64,4 +64,4 @@ end
 
 gem "faker", "~> 3.5"
 
-gem "icalendar", "~> 2.10"
+gem "icalendar", "~> 2.11"
